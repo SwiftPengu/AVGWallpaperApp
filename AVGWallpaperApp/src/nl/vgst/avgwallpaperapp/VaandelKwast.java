@@ -1,54 +1,55 @@
 package nl.vgst.avgwallpaperapp;
 
 import java.io.BufferedInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.app.WallpaperManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.BitmapFactory.Options;
-import android.graphics.Rect;
 import android.os.Handler;
 import android.os.IBinder;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class VaandelKwast extends Service {
 	public static String VAANDEL_URL = "http://vaandel.vgst.nl/upload/vaandel.jpg";
 	public static final int MINIMUM_DOWNLOAD_FREQUENCY = 1000;
-	public static final int[] vaandeldimensions = {176,144};
-	
+	public static final int NOTIFICATION_ID = 42;
+	public static final int[] vaandeldimensions = { 176, 144 };
+
 	private int downloadfrequency;
 
 	private boolean backupexisting = true;
 
 	// wallpaper system handle
 	private WallpaperManager wpm;
+	private NotificationManager nm;
 
 	// handler voor scheduling
 	private Handler handler;
 	private Runnable downloader;
 
-	// bestand waar wallpaper tijdelijk in wordt opgeslagen
-	private File vaandelfiguur;
-
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		Log.d("VK", "VaandelKwast start op...");
 		// lees instellingen uit
-		if(intent!=null){
-			setDownloadFrequency(intent.getIntExtra("freq", MINIMUM_DOWNLOAD_FREQUENCY));
-		}else{
+		if (intent != null) {
+			setDownloadFrequency(intent.getIntExtra("freq",
+					MINIMUM_DOWNLOAD_FREQUENCY));
+		} else {
 			setDownloadFrequency(MINIMUM_DOWNLOAD_FREQUENCY);
 		}
 		if (backupexisting)
 			backupWP();
-		// open het wallpaperbestand
-		vaandelfiguur = new File(getExternalCacheDir(), "vaandel.jpg");
 
 		// start met het updaten van de wallpaper
 		handler = new Handler();
@@ -70,6 +71,29 @@ public class VaandelKwast extends Service {
 		if (wpm == null) {
 			throw new RuntimeException("Failed to obtain wallpaper manager");
 		}
+		nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		if (nm == null) {
+			throw new RuntimeException("Failed to obtain notification manager");
+		}
+
+		// geen updates als scherm uit is geweest
+		registerReceiver(new BroadcastReceiver() {
+			@Override
+			public void onReceive(Context context, Intent intent) {
+				if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
+					handler.removeCallbacks(downloader);
+					updateWallpaper();
+				}
+			}
+		}, new IntentFilter());
+		
+		//plaats notification
+		NotificationCompat.Builder mbuilder = new NotificationCompat.Builder(
+				this).setSmallIcon(R.drawable.ic_launcher)
+				.setContentTitle("AVG Wallpaper App")
+				.setContentText("De VaandelKwast haalt het vaandel...")
+				.setOngoing(true);
+		nm.notify(NOTIFICATION_ID, mbuilder.build());
 	}
 
 	@Override
@@ -78,7 +102,7 @@ public class VaandelKwast extends Service {
 		restoreWP();
 		// verwijder eventuele events die nog in de wachtrij zitten
 		handler.removeCallbacks(downloader);
-		// TODO verbrand gedownload vaandel
+		nm.cancel(NOTIFICATION_ID);
 		super.onDestroy();
 	}
 
@@ -119,15 +143,23 @@ public class VaandelKwast extends Service {
 					// download het vaandel
 					HttpURLConnection conn = (HttpURLConnection) new URL(
 							VAANDEL_URL).openConnection();
+					conn.setUseCaches(true);
 					BufferedInputStream vaandelstream = new BufferedInputStream(
 							conn.getInputStream());
-					
+
 					Log.d("VK", "Vaandel opgehaald, stel wallpaper in");
-					Bitmap vaandelbitmap = BitmapFactory.decodeStream(vaandelstream);
-					
+					Bitmap vaandelbitmap = BitmapFactory
+							.decodeStream(vaandelstream);
+					// schaal plaatje op de breedte, zodat de tijd goed te lezen
+					// is
+					// double factor =
+					// (double)wpm.getDesiredMinimumWidth()/vaandelbitmap.getWidth();
+					// vaandelbitmap = Bitmap.createScaledBitmap(vaandelbitmap,
+					// (int)(vaandelbitmap.getWidth()*factor),
+					// (int)(vaandelbitmap.getWidth()*factor), false);
+
 					// stel de wallpaper opnieuw in
 					wpm.setBitmap(vaandelbitmap);
-					//fwpm.suggestDesiredDimensions((int)(vaandelbitmap.getWidth()*1.5), (int)(vaandelbitmap.getHeight()*1.5));
 				} catch (IOException e) {
 					e.printStackTrace();
 					Log.e("VK",

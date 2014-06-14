@@ -1,7 +1,7 @@
 package nl.vgst.avgwallpaperapp;
 
-import static nl.vgst.avgwallpaperapp.MainActivity.MINIMUM_DOWNLOAD_FREQUENCY;
 import static nl.vgst.avgwallpaperapp.MainActivity.SETTINGS_ID;
+import static nl.vgst.avgwallpaperapp.MainActivity.getDownloadFrequency;
 
 import java.io.IOException;
 
@@ -24,8 +24,7 @@ public class Sleutelgat extends Activity {
 		public void run() {
 			new VaandelStandaard().execute();
 			// reschedule
-			handler.postDelayed(this,
-					settings.getInt("freq", MINIMUM_DOWNLOAD_FREQUENCY));
+			Sleutelgat.this.handler.postDelayed(this, getDownloadFrequency(Sleutelgat.this.settings));
 		}
 	};
 
@@ -33,20 +32,20 @@ public class Sleutelgat extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_sleutelgat);
-		handler = new Handler();
-		settings = getSharedPreferences(SETTINGS_ID, Context.MODE_PRIVATE);
+		this.handler = new Handler();
+		this.settings = getSharedPreferences(SETTINGS_ID, Context.MODE_PRIVATE);
 	}
 
 	@Override
 	protected void onResume() {
 		super.onResume();
-		handler.post(updater);
+		this.handler.post(this.updater);
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		handler.removeCallbacks(updater);
+		this.handler.removeCallbacks(this.updater);
 	}
 
 	public void stopgluren(View view) {
@@ -55,37 +54,37 @@ public class Sleutelgat extends Activity {
 
 	/**
 	 * Klasse die Bitmap asynchroon ophaalt en instelt in de View
+	 * 
 	 * @author Rick Hindriks
-	 *
+	 * 
 	 */
-	private class VaandelStandaard extends
-			AsyncTask<Void, Integer, Bitmap> {
+	private class VaandelStandaard extends AsyncTask<Void, Integer, Bitmap> {
 		@Override
 		protected Bitmap doInBackground(Void... params) {
-			try{
+			try {
 				return VaandelKwast.getVaandel();
-			}catch(IOException e){
+			} catch (IOException e) {
 				e.printStackTrace();
-				Log.e("SG","Vaandel ophalen ging fout, is het er nog wel?");
+				Log.e("SG", "Vaandel ophalen ging fout, is het er nog wel?");
 			}
 			return null;
 		}
-		
+
 		@Override
 		/**
 		 * Deze functie draait op de UI thread, dus geen handler nodig
 		 */
 		protected void onPostExecute(Bitmap result) {
 			super.onPostExecute(result);
-			if(result!=null){
-				//Stel plaatje in
+			if (result != null) {
+				// Stel plaatje in
 				ImageView imgv = new ImageView(Sleutelgat.this);
 				imgv.setImageBitmap(result);
 				imgv.setAdjustViewBounds(true);
-				//Haal oude plaatje weg
-				((LinearLayout)findViewById(R.id.slgt_layout_image)).removeAllViews();
-				//Stel nieuwe plaatje in
-				((LinearLayout)findViewById(R.id.slgt_layout_image)).addView(imgv);
+				// Haal oude plaatje weg
+				((LinearLayout) findViewById(R.id.slgt_layout_image)).removeAllViews();
+				// Stel nieuwe plaatje in
+				((LinearLayout) findViewById(R.id.slgt_layout_image)).addView(imgv);
 			}
 		}
 	}

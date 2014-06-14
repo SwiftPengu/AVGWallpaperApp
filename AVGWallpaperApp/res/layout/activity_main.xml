@@ -33,14 +33,33 @@
         android:inputType="number"
         android:text="-1" />
 
+    <ToggleButton
+        android:id="@+id/main_tog_shownotifications"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/textView1"
+        android:checked="true"
+        android:text="Show notification" />
+
     <Button
         android:id="@+id/button1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
-        android:layout_alignParentRight="true"
-        android:layout_below="@+id/main_btn_start"
+        android:layout_below="@+id/main_tog_shownotifications"
         android:onClick="peekVaandel"
         android:text="Ik wil gewoon even gluren" />
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/main_tog_shownotifications"
+        android:layout_alignBottom="@+id/main_tog_shownotifications"
+        android:layout_alignParentRight="true"
+        android:layout_toRightOf="@+id/main_tog_shownotifications"
+        android:text="Laat notification zien"
+        android:textAppearance="?android:attr/textAppearanceMedium" />
 
 </RelativeLayout>

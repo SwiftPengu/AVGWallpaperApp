@@ -1,18 +1,15 @@
 package nl.vgst.avgwallpaperapp;
 
+import static nl.vgst.avgwallpaperapp.MainActivity.*;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.Service;
-import android.app.WallpaperManager;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
+import android.app.*;
+import android.content.*;
+import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Handler;
@@ -21,27 +18,38 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class VaandelKwast extends Service {
-	public static String VAANDEL_URL = "http://vaandel.vgst.nl/upload/vaandel.jpg";
-	public static final int MINIMUM_DOWNLOAD_FREQUENCY = 1000;
-	public static final int NOTIFICATION_ID = 42;
-	public static final int[] vaandeldimensions = { 176, 144 };
-
-	private int downloadfrequency;
-
 	private boolean backupexisting = true;
 
 	// wallpaper system handle
 	private WallpaperManager wpm;
+
+	// notifications
 	private NotificationManager nm;
+	private final BroadcastReceiver bcrcv = new BroadcastReceiver() {
+		public void onReceive(Context context, Intent intent) {
+			if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
+				handler.removeCallbacks(downloader);
+				updateWallpaper();
+			}
+		}
+	};;
 
 	// handler voor scheduling
 	private Handler handler;
-	private Runnable downloader;
+	private final Runnable downloader = new Runnable() {
+		public void run() {
+			updateWallpaper();
+		}
+	};;
+
+	private SharedPreferences settings;
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		Log.d("VK", "VaandelKwast start op...");
 		// lees instellingen uit
+		settings = getSharedPreferences(SETTINGS_ID, Context.MODE_PRIVATE);
+
 		if (intent != null) {
 			setDownloadFrequency(intent.getIntExtra("freq",
 					MINIMUM_DOWNLOAD_FREQUENCY));
@@ -53,13 +61,7 @@ public class VaandelKwast extends Service {
 
 		// start met het updaten van de wallpaper
 		handler = new Handler();
-		downloader = new Runnable() {
-			public void run() {
-				updateWallpaper();
-			}
-		};
 		handler.post(downloader);
-
 		return super.onStartCommand(intent, flags, startId);
 	}
 
@@ -77,17 +79,9 @@ public class VaandelKwast extends Service {
 		}
 
 		// geen updates als scherm uit is geweest
-		registerReceiver(new BroadcastReceiver() {
-			@Override
-			public void onReceive(Context context, Intent intent) {
-				if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
-					handler.removeCallbacks(downloader);
-					updateWallpaper();
-				}
-			}
-		}, new IntentFilter());
-		
-		//plaats notification
+		registerReceiver(bcrcv, new IntentFilter());
+
+		// plaats notification
 		NotificationCompat.Builder mbuilder = new NotificationCompat.Builder(
 				this).setSmallIcon(R.drawable.ic_launcher)
 				.setContentTitle("AVG Wallpaper App")
@@ -102,7 +96,9 @@ public class VaandelKwast extends Service {
 		restoreWP();
 		// verwijder eventuele events die nog in de wachtrij zitten
 		handler.removeCallbacks(downloader);
+		//stop met notifications behandelen
 		nm.cancel(NOTIFICATION_ID);
+		unregisterReceiver(bcrcv);
 		super.onDestroy();
 	}
 
@@ -112,11 +108,13 @@ public class VaandelKwast extends Service {
 	}
 
 	public void setDownloadFrequency(int newdf) {
+		Editor ed = settings.edit();
 		if (newdf < MINIMUM_DOWNLOAD_FREQUENCY) {
-			downloadfrequency = MINIMUM_DOWNLOAD_FREQUENCY;
+			ed.putInt("freq", MINIMUM_DOWNLOAD_FREQUENCY);
 		} else {
-			downloadfrequency = newdf;
+			ed.putInt("freq", newdf);
 		}
+		ed.apply();
 	}
 
 	// backup de bestaande wallpaper
@@ -141,25 +139,17 @@ public class VaandelKwast extends Service {
 					Log.d("VK", "Haal het vaandel...");
 
 					// download het vaandel
-					HttpURLConnection conn = (HttpURLConnection) new URL(
-							VAANDEL_URL).openConnection();
-					conn.setUseCaches(true);
-					BufferedInputStream vaandelstream = new BufferedInputStream(
-							conn.getInputStream());
+					Bitmap vaandelbitmap = getVaandel();
+					// TODO hier schalen
 
+					// stel de wallpaper in
 					Log.d("VK", "Vaandel opgehaald, stel wallpaper in");
-					Bitmap vaandelbitmap = BitmapFactory
-							.decodeStream(vaandelstream);
-					// schaal plaatje op de breedte, zodat de tijd goed te lezen
-					// is
-					// double factor =
-					// (double)wpm.getDesiredMinimumWidth()/vaandelbitmap.getWidth();
-					// vaandelbitmap = Bitmap.createScaledBitmap(vaandelbitmap,
-					// (int)(vaandelbitmap.getWidth()*factor),
-					// (int)(vaandelbitmap.getWidth()*factor), false);
+					if (vaandelbitmap != null) {
+						wpm.setBitmap(vaandelbitmap);
+					} else {
+						Log.e("VK", "Bitmap is niet gegenereerd!");
+					}
 
-					// stel de wallpaper opnieuw in
-					wpm.setBitmap(vaandelbitmap);
 				} catch (IOException e) {
 					e.printStackTrace();
 					Log.e("VK",
@@ -170,7 +160,20 @@ public class VaandelKwast extends Service {
 		}).start();
 
 		// reschedule
-		handler.postDelayed(downloader, downloadfrequency);
+		handler.postDelayed(downloader,
+				settings.getInt("freq", MINIMUM_DOWNLOAD_FREQUENCY));
+	}
+	
+	public static Bitmap getVaandel() throws IOException{
+		HttpURLConnection conn = (HttpURLConnection) new URL(
+				VAANDEL_URL).openConnection();
+		conn.setUseCaches(true);
+		BufferedInputStream vaandelstream = new BufferedInputStream(
+				conn.getInputStream());
+		Bitmap vaandelbitmap = BitmapFactory
+				.decodeStream(vaandelstream);
+		vaandelstream.close();
+		return vaandelbitmap;
 	}
 
 }

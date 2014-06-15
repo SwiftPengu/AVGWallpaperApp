@@ -62,7 +62,7 @@ public class Sleutelgat extends Activity {
 		@Override
 		protected Bitmap doInBackground(Void... params) {
 			try {
-				return VaandelKwast.getVaandel();
+				return VaandelKwast.getVaandel(Sleutelgat.this.settings);
 			} catch (IOException e) {
 				e.printStackTrace();
 				Log.e("SG", "Vaandel ophalen ging fout, is het er nog wel?");
@@ -76,7 +76,9 @@ public class Sleutelgat extends Activity {
 		 */
 		protected void onPostExecute(Bitmap result) {
 			super.onPostExecute(result);
+			Log.d("SG", "Request executed");
 			if (result != null) {
+				Log.d("SG", "New image (not null)");
 				// Stel plaatje in
 				ImageView imgv = new ImageView(Sleutelgat.this);
 				imgv.setImageBitmap(result);

@@ -2,22 +2,19 @@ package nl.vgst.avgwallpaperapp;
 
 import static nl.vgst.avgwallpaperapp.MainActivity.*;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
 import android.app.*;
 import android.content.*;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.graphics.*;
+import android.graphics.BitmapFactory.Options;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 
 public class VaandelKwast extends Service {
-	private final boolean backupexisting = true;
-
 	// wallpaper system handle
 	private WallpaperManager wpm;
 
@@ -52,9 +49,7 @@ public class VaandelKwast extends Service {
 		} else {
 			setDownloadFrequency(DEFAULT_DOWNLOAD_FREQUENCY, this.settings);
 		}
-		if (this.backupexisting) {
-			backupWP();
-		}
+		backupWP();
 
 		// start met het updaten van de wallpaper
 		this.handler = new Handler();
@@ -125,19 +120,15 @@ public class VaandelKwast extends Service {
 			public void run() {
 				try {
 					Log.d("VK", "Haal het vaandel...");
-
 					// download het vaandel
-					Bitmap vaandelbitmap = getVaandel();
-					// TODO hier schalen
-
-					// stel de wallpaper in
+					Bitmap vaandelbitmap = getVaandel(VaandelKwast.this.settings);
 					Log.d("VK", "Vaandel opgehaald, stel wallpaper in");
 					if (vaandelbitmap != null) {
+						// stel de wallpaper in
 						VaandelKwast.this.wpm.setBitmap(vaandelbitmap);
 					} else {
 						Log.e("VK", "Bitmap is niet gegenereerd!");
 					}
-
 				} catch (IOException e) {
 					e.printStackTrace();
 					Log.e("VK", "Fout bij het instellen van de wallpaper: " + e.getMessage());
@@ -149,13 +140,18 @@ public class VaandelKwast extends Service {
 		this.handler.postDelayed(this.downloader, getDownloadFrequency(this.settings));
 	}
 
-	public static Bitmap getVaandel() throws IOException {
-		HttpURLConnection conn = (HttpURLConnection) new URL(VAANDEL_URL).openConnection();
-		conn.setUseCaches(true);
-		BufferedInputStream vaandelstream = new BufferedInputStream(conn.getInputStream());
-		Bitmap vaandelbitmap = BitmapFactory.decodeStream(vaandelstream);
+	public static Bitmap getVaandel(SharedPreferences settings) throws IOException {
+		return getVaandel(settings, null, new Options());
+	}
+
+	public static Bitmap getVaandel(SharedPreferences settings, Rect padding, Options o) throws IOException {
+		// Maak request uniek per 200ms
+		String URLSTR = (getTrackingEnabled(settings) ? VAANDEL_URL_TRACKED : VAANDEL_URL) + "?" + (System.currentTimeMillis() / 200);
+		HttpURLConnection conn = (HttpURLConnection) new URL(URLSTR).openConnection();
+		InputStream vaandelstream = conn.getInputStream();
+
+		Bitmap vaandelbitmap = BitmapFactory.decodeStream(new BufferedInputStream(vaandelstream), padding, o);
 		vaandelstream.close();
 		return vaandelbitmap;
 	}
-
 }

@@ -42,15 +42,6 @@
         android:checked="true"
         android:text="Show notification" />
 
-    <Button
-        android:id="@+id/button1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_below="@+id/main_tog_shownotifications"
-        android:onClick="peekVaandel"
-        android:text="Ik wil gewoon even gluren" />
-
     <TextView
         android:id="@+id/textView2"
         android:layout_width="wrap_content"
@@ -60,6 +51,35 @@
         android:layout_alignParentRight="true"
         android:layout_toRightOf="@+id/main_tog_shownotifications"
         android:text="Laat notification zien"
+        android:textAppearance="?android:attr/textAppearanceMedium" />
+
+    <ToggleButton
+        android:id="@+id/main_tog_tracking"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/main_tog_shownotifications"
+        android:checked="true"
+        android:text="ToggleButton" />
+
+    <Button
+        android:id="@+id/button1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/main_tog_tracking"
+        android:onClick="peekVaandel"
+        android:text="Ik wil gewoon even gluren" />
+
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/main_tog_tracking"
+        android:layout_alignBottom="@+id/main_tog_tracking"
+        android:layout_alignParentRight="true"
+        android:layout_toRightOf="@+id/main_tog_tracking"
+        android:text="Track aantal aanvragen"
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
 </RelativeLayout>

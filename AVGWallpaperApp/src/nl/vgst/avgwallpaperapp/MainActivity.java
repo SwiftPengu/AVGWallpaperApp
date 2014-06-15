@@ -18,6 +18,7 @@ public class MainActivity extends Activity {
 	private NotificationManager nm;
 
 	public static final String VAANDEL_URL = "http://vaandel.vgst.nl/upload/vaandel.jpg";
+	public static final String VAANDEL_URL_TRACKED = "http://bit.ly/vgstvaandel";
 	public static final int MINIMUM_DOWNLOAD_FREQUENCY = 1000;
 	public static final int DEFAULT_DOWNLOAD_FREQUENCY = 1500;
 	public static final int NOTIFICATION_ID = 42;
@@ -82,6 +83,17 @@ public class MainActivity extends Activity {
 				} else {
 					removeNotification(MainActivity.this.nm);
 				}
+			}
+		});
+		;
+
+		// Tracking toggle
+		final ToggleButton trackingtoggler = (ToggleButton) findViewById(R.id.main_tog_shownotifications);
+		trackingtoggler.setChecked(getTrackingEnabled(this.settings));
+		trackingtoggler.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+			@Override
+			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+				setTrackingEnabled(isChecked, MainActivity.this.settings);
 			}
 		});
 		;
@@ -166,12 +178,23 @@ public class MainActivity extends Activity {
 	}
 
 	public static void placeNotification(Context ct, NotificationManager nm) {
-		NotificationCompat.Builder mbuilder = new NotificationCompat.Builder(ct).setSmallIcon(R.drawable.ic_launcher).setContentTitle("AVG Wallpaper App")
-				.setContentText("De VaandelKwast haalt het vaandel...").setOngoing(true);
+		NotificationCompat.Builder mbuilder = new NotificationCompat.Builder(ct).setSmallIcon(R.drawable.ic_launcher)
+				.setContentTitle("AVG Wallpaper App").setContentText("De VaandelKwast haalt het vaandel...").setOngoing(true)
+				.setContentIntent(PendingIntent.getActivity(ct, 0, new Intent(ct, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT));
 		nm.notify(NOTIFICATION_ID, mbuilder.build());
 	}
 
 	public static void removeNotification(NotificationManager nm) {
 		nm.cancel(NOTIFICATION_ID);
+	}
+
+	public static boolean getTrackingEnabled(SharedPreferences settings) {
+		return settings.getBoolean("trackme", true);
+	}
+
+	public static void setTrackingEnabled(boolean trackme, SharedPreferences settings) {
+		Editor ed = settings.edit();
+		ed.putBoolean("trackme", trackme);
+		ed.apply();
 	}
 }
